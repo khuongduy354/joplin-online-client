@@ -52,6 +52,34 @@ export default function CredentialForm({ onSubmit }: Props) {
   const [webdavPath, setWebdavPath] = useState("http://localhost:6065/");
   const [webdavIgnoreTls, setWebdavIgnoreTls] = useState(false);
 
+  // Convert localhost URLs to proxy path to avoid CORS
+  const getProxiedWebdavPath = (path: string): string => {
+    try {
+      // If already a proxy path, return it
+      if (path.startsWith("/webdav-proxy")) {
+        return path;
+      }
+
+      // Check if it's a localhost URL
+      if (path.includes("localhost") || path.includes("127.0.0.1")) {
+        const url = new URL(path);
+        const port = url.port || (url.protocol === "https:" ? "443" : "80");
+        // Use proxy with port suffix to support multiple ports
+        let proxyPath = `/webdav-proxy-${port}${url.pathname}`;
+        // Ensure it ends with /
+        if (!proxyPath.endsWith("/")) {
+          proxyPath += "/";
+        }
+        return proxyPath;
+      }
+      return path;
+    } catch (e) {
+      console.error("Error converting path:", e, "Original path:", path);
+      // If it's already a relative path or invalid URL, return as-is
+      return path;
+    }
+  };
+
   const [oneDriveClientId, setOneDriveClientId] = useState("");
   const [oneDriveClientSecret, setOneDriveClientSecret] = useState("");
   const [oneDriveAuthToken, setOneDriveAuthToken] = useState("");
@@ -74,10 +102,13 @@ export default function CredentialForm({ onSubmit }: Props) {
     if (storageType === "FileSystem") {
       credentials.filesystem = { syncPath: fileSystemPath };
     } else if (storageType === "WebDAV") {
+      const proxiedPath = getProxiedWebdavPath(webdavPath);
+      console.log("Original path:", webdavPath);
+      console.log("Proxied path:", proxiedPath);
       credentials.webdav = {
         username: webdavUsername,
         password: webdavPassword,
-        path: webdavPath,
+        path: proxiedPath,
         ignoreTlsErrors: webdavIgnoreTls,
       };
     } else if (storageType === "OneDrive") {
@@ -183,6 +214,14 @@ export default function CredentialForm({ onSubmit }: Props) {
                 style={{ width: "100%", padding: "8px", fontSize: "16px" }}
                 required
               />
+              <small
+                style={{ color: "#666", display: "block", marginTop: "4px" }}
+              >
+                Enter your WebDAV server URL. Localhost URLs will automatically
+                use CORS proxy.
+                <br />
+                Examples: http://localhost:6065/, https://myserver.com/webdav/
+              </small>
             </div>
 
             <div style={{ marginBottom: "15px" }}>

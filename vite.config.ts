@@ -51,4 +51,155 @@ export default defineConfig({
       transformMixedEsModules: true,
     },
   },
+  server: {
+    cors: true,
+    proxy: {
+      // Support multiple localhost ports for WebDAV
+      "/webdav-proxy-6065": {
+        target: "http://localhost:6065",
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        selfHandleResponse: true,
+        rewrite: (path) => path.replace(/^\/webdav-proxy-6065/, ""),
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq, req) => {
+            // Forward all headers including auth
+            if (req.headers.authorization) {
+              proxyReq.setHeader("Authorization", req.headers.authorization);
+            }
+            // Ensure WebDAV methods are preserved
+            proxyReq.method = req.method || "GET";
+          });
+
+          proxy.on("proxyRes", (proxyRes, req, res) => {
+            // Rewrite WebDAV XML responses to include proxy prefix
+            const contentType = proxyRes.headers["content-type"] || "";
+            if (
+              contentType.includes("xml") ||
+              contentType.includes("application/xml")
+            ) {
+              let body = [];
+              proxyRes.on("data", (chunk) => {
+                body.push(chunk);
+              });
+              proxyRes.on("end", () => {
+                const bodyString = Buffer.concat(body).toString();
+                // Rewrite hrefs to include the proxy prefix
+                const rewrittenBody = bodyString
+                  .replace(/href>\/([^<]*)</g, "href>/webdav-proxy-6065/$1<")
+                  .replace(/href>"\/([^"]*)</g, 'href>"/webdav-proxy-6065/$1<');
+
+                // Remove original content-length and set correct one for rewritten body
+                const headers = { ...proxyRes.headers };
+                delete headers["content-length"];
+                headers["content-length"] =
+                  Buffer.byteLength(rewrittenBody).toString();
+
+                res.writeHead(proxyRes.statusCode || 200, headers);
+                res.end(rewrittenBody);
+              });
+            } else {
+              // For non-XML responses, just pipe through with original headers
+              res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
+              proxyRes.pipe(res);
+            }
+          });
+
+          proxy.on("error", (err, req, res) => {
+            console.error("Proxy error:", err);
+            if (!res.headersSent) {
+              res.writeHead(500, { "Content-Type": "text/plain" });
+            }
+            res.end("Proxy error");
+          });
+        },
+      },
+      "/webdav-proxy-8080": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        selfHandleResponse: true,
+        rewrite: (path) => path.replace(/^\/webdav-proxy-8080/, ""),
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq, req) => {
+            if (req.headers.authorization) {
+              proxyReq.setHeader("Authorization", req.headers.authorization);
+            }
+            proxyReq.method = req.method || "GET";
+          });
+
+          proxy.on("proxyRes", (proxyRes, req, res) => {
+            const contentType = proxyRes.headers["content-type"] || "";
+            if (contentType.includes("xml")) {
+              let body = [];
+              proxyRes.on("data", (chunk) => body.push(chunk));
+              proxyRes.on("end", () => {
+                const bodyString = Buffer.concat(body).toString();
+                const rewrittenBody = bodyString
+                  .replace(/href>\/([^<]*)</g, "href>/webdav-proxy-8080/$1<")
+                  .replace(
+                    /href>"?\/([^"]*)</g,
+                    'href>"/webdav-proxy-8080/$1<',
+                  );
+
+                const headers = { ...proxyRes.headers };
+                delete headers["content-length"];
+                headers["content-length"] =
+                  Buffer.byteLength(rewrittenBody).toString();
+
+                res.writeHead(proxyRes.statusCode || 200, headers);
+                res.end(rewrittenBody);
+              });
+            } else {
+              res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
+              proxyRes.pipe(res);
+            }
+          });
+        },
+      },
+      "/webdav-proxy-80": {
+        target: "http://localhost:80",
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        selfHandleResponse: true,
+        rewrite: (path) => path.replace(/^\/webdav-proxy-80/, ""),
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq, req) => {
+            if (req.headers.authorization) {
+              proxyReq.setHeader("Authorization", req.headers.authorization);
+            }
+            proxyReq.method = req.method || "GET";
+          });
+
+          proxy.on("proxyRes", (proxyRes, req, res) => {
+            const contentType = proxyRes.headers["content-type"] || "";
+            if (contentType.includes("xml")) {
+              let body = [];
+              proxyRes.on("data", (chunk) => body.push(chunk));
+              proxyRes.on("end", () => {
+                const bodyString = Buffer.concat(body).toString();
+                const rewrittenBody = bodyString
+                  .replace(/href>\/([^<]*)</g, "href>/webdav-proxy-80/$1<")
+                  .replace(/href>"?\/([^"]*)</g, 'href>"/webdav-proxy-80/$1<');
+
+                const headers = { ...proxyRes.headers };
+                delete headers["content-length"];
+                headers["content-length"] =
+                  Buffer.byteLength(rewrittenBody).toString();
+
+                res.writeHead(proxyRes.statusCode || 200, headers);
+                res.end(rewrittenBody);
+              });
+            } else {
+              res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
+              proxyRes.pipe(res);
+            }
+          });
+        },
+      },
+    },
+  },
 });

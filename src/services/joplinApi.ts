@@ -18,6 +18,7 @@ export class JoplinApiService {
         },
       });
     } else if (type === "WebDAV") {
+      console.log("Connecting with WebDAV credentials:", credentials.webdav);
       this.storage = new StorageAPI("WebDAV", {
         webDAVOptions: {
           username: credentials.webdav?.username || "",
@@ -66,7 +67,9 @@ export class JoplinApiService {
       throw new Error("Storage not initialized. Call connect() first.");
     }
 
-    return await this.storage.getItems();
+    return await this.storage.getItems({
+      unserializeAll: true,
+    });
   }
 
   async getItem(id: string): Promise<Item | null> {

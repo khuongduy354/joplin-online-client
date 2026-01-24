@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Item } from "joplin-sync";
+import { joplinApi } from "../services/joplinApi";
 
 interface Props {
   items: Item[];
@@ -10,9 +11,45 @@ interface Props {
 
 export default function ItemList({ items, loading, error, onRefresh }: Props) {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [itemDetail, setItemDetail] = useState<Item | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [filter, setFilter] = useState<
     "all" | "notes" | "folders" | "tags" | "resources"
   >("all");
+
+  useEffect(() => {
+    console.log("Items updated", items);
+  }, [items]);
+
+  // Fetch item details when selected
+  useEffect(() => {
+    if (!selectedItem) {
+      setItemDetail(null);
+      return;
+    }
+
+    const fetchItemDetail = async () => {
+      setLoadingDetail(true);
+      setDetailError(null);
+      try {
+        // Extract ID from path (remove .md extension)
+        const itemId = selectedItem.path?.replace(/\.md$/, "") || "";
+        console.log("Fetching item detail for:", itemId);
+        const detail = await joplinApi.getItem(itemId);
+        setItemDetail(detail);
+      } catch (err) {
+        const errorMsg =
+          err instanceof Error ? err.message : "Failed to load item details";
+        setDetailError(errorMsg);
+        console.error("Error fetching item detail:", err);
+      } finally {
+        setLoadingDetail(false);
+      }
+    };
+
+    fetchItemDetail();
+  }, [selectedItem]);
 
   const filteredItems = items.filter((item) => {
     if (filter === "all") return true;
@@ -153,9 +190,21 @@ export default function ItemList({ items, loading, error, onRefresh }: Props) {
       </div>
 
       <div style={{ flex: 1 }}>
-        {selectedItem ? (
+        {!selectedItem ? (
+          <div style={{ textAlign: "center", padding: "60px", color: "#666" }}>
+            <p>Select an item to view details</p>
+          </div>
+        ) : loadingDetail ? (
+          <div style={{ textAlign: "center", padding: "60px" }}>
+            <p>Loading item details...</p>
+          </div>
+        ) : detailError ? (
+          <div style={{ textAlign: "center", padding: "60px", color: "red" }}>
+            <p>Error loading details: {detailError}</p>
+          </div>
+        ) : itemDetail ? (
           <div>
-            <h2>{selectedItem.title || "(Untitled)"}</h2>
+            <h2>{itemDetail.title || "(Untitled)"}</h2>
             <div
               style={{
                 marginBottom: "20px",
@@ -165,28 +214,26 @@ export default function ItemList({ items, loading, error, onRefresh }: Props) {
               }}
             >
               <div style={{ marginBottom: "8px" }}>
-                <strong>Type:</strong> {getItemTypeLabel(selectedItem.type_)}
+                <strong>Type:</strong> {getItemTypeLabel(itemDetail.type_)}
               </div>
               <div style={{ marginBottom: "8px" }}>
-                <strong>ID:</strong> <code>{selectedItem.id}</code>
+                <strong>ID:</strong> <code>{itemDetail.id}</code>
               </div>
-              {selectedItem.parent_id && (
+              {itemDetail.parent_id && (
                 <div style={{ marginBottom: "8px" }}>
                   <strong>Parent ID:</strong>{" "}
-                  <code>{selectedItem.parent_id}</code>
+                  <code>{itemDetail.parent_id}</code>
                 </div>
               )}
               <div style={{ marginBottom: "8px" }}>
-                <strong>Created:</strong>{" "}
-                {formatDate(selectedItem.created_time)}
+                <strong>Created:</strong> {formatDate(itemDetail.created_time)}
               </div>
               <div style={{ marginBottom: "8px" }}>
-                <strong>Updated:</strong>{" "}
-                {formatDate(selectedItem.updated_time)}
+                <strong>Updated:</strong> {formatDate(itemDetail.updated_time)}
               </div>
             </div>
 
-            {selectedItem.body && (
+            {itemDetail.body && (
               <div>
                 <h3>Content:</h3>
                 <div
@@ -201,12 +248,12 @@ export default function ItemList({ items, loading, error, onRefresh }: Props) {
                     overflowY: "auto",
                   }}
                 >
-                  {selectedItem.body}
+                  {itemDetail.body}
                 </div>
               </div>
             )}
 
-            {selectedItem.type_ === 4 && (
+            {itemDetail.type_ === 4 && (
               <div style={{ marginTop: "15px" }}>
                 <h3>Resource Info:</h3>
                 <div
@@ -216,15 +263,14 @@ export default function ItemList({ items, loading, error, onRefresh }: Props) {
                     borderRadius: "4px",
                   }}
                 >
-                  {selectedItem.size && (
+                  {itemDetail.size && (
                     <div>
-                      <strong>Size:</strong> {selectedItem.size} bytes
+                      <strong>Size:</strong> {itemDetail.size} bytes
                     </div>
                   )}
-                  {selectedItem.localResourceContentPath && (
+                  {itemDetail.mime && (
                     <div>
-                      <strong>Local Path:</strong>{" "}
-                      {selectedItem.localResourceContentPath}
+                      <strong>MIME Type:</strong> {itemDetail.mime}
                     </div>
                   )}
                 </div>
@@ -233,7 +279,7 @@ export default function ItemList({ items, loading, error, onRefresh }: Props) {
           </div>
         ) : (
           <div style={{ textAlign: "center", padding: "60px", color: "#666" }}>
-            <p>Select an item to view details</p>
+            <p>No details available</p>
           </div>
         )}
       </div>
