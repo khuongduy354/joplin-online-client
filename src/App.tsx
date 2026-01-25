@@ -59,45 +59,28 @@ function App() {
   };
 
   return (
-    <div style={{ minHeight: "100vh" }}>
-      <header
-        style={{
-          padding: "15px 20px",
-          backgroundColor: "#1e1e1e",
-          color: "white",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <h1 style={{ margin: 0 }}>Joplin Online Viewer</h1>
+    <div className="app-container">
+      <header className="app-header">
+        <h1>Joplin Online Viewer</h1>
         {connected && (
-          <button
-            onClick={handleDisconnect}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: "#dc3545",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={handleDisconnect} className="disconnect-btn">
             Disconnect
           </button>
         )}
       </header>
 
-      {!connected ? (
-        <CredentialForm onSubmit={handleConnect} />
-      ) : (
-        <ItemList
-          items={items}
-          loading={loading}
-          error={error}
-          onRefresh={handleRefresh}
-        />
-      )}
+      <main className="app-main">
+        {!connected ? (
+          <CredentialForm onSubmit={handleConnect} />
+        ) : (
+          <ItemList
+            items={items}
+            loading={loading}
+            error={error}
+            onRefresh={handleRefresh}
+          />
+        )}
+      </main>
     </div>
   );
 }

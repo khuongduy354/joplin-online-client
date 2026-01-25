@@ -7,7 +7,9 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "joplin-sync": path.resolve(__dirname, "../joplin-sync-lib/dist"),
+      // Point to source files for dev mode (tsx/esbuild will compile on the fly)
+      // For production build, this will also work as Vite bundles everything
+      "joplin-sync": path.resolve(__dirname, "../joplin-sync-lib/src"),
       // Node.js built-in polyfills
       crypto: path.resolve(__dirname, "node_modules/crypto-browserify"),
       stream: path.resolve(__dirname, "node_modules/stream-browserify"),
@@ -39,13 +41,19 @@ export default defineConfig({
     global: "globalThis",
   },
   optimizeDeps: {
-    include: ["joplin-sync", "buffer", "process"],
+    // Exclude locally linked packages from pre-bundling
+    exclude: ['joplin-sync'],
+    include: ['buffer', 'process'],
     esbuildOptions: {
       define: {
-        global: "globalThis",
+        global: 'globalThis',
       },
     },
+    // Force Vite to always check for changes in excluded dependencies
+    force: true,
   },
+  // Clear cache on server start
+  cacheDir: 'node_modules/.vite',
   build: {
     commonjsOptions: {
       transformMixedEsModules: true,
@@ -53,6 +61,17 @@ export default defineConfig({
   },
   server: {
     cors: true,
+    headers: {
+      'Cache-Control': 'no-store',
+    },
+    // Watch the linked joplin-sync-lib for changes
+    watch: {
+      ignored: ['!**/node_modules/joplin-sync/**'],
+    },
+    // Enable fs.allow to access files outside root
+    fs: {
+      allow: ['..'],
+    },
     proxy: {
       // Support multiple localhost ports for WebDAV
       "/webdav-proxy-6065": {

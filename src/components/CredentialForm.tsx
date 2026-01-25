@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./CredentialForm.css";
 
 export type StorageType =
   | "FileSystem"
@@ -138,24 +139,16 @@ export default function CredentialForm({ onSubmit }: Props) {
   };
 
   return (
-    <div style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
-      <h2>Connect to Joplin Storage</h2>
+    <div className="credential-form-container">
+      <h2 className="credential-form-title">Connect to Joplin Storage</h2>
 
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: "20px" }}>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "5px",
-              fontWeight: "bold",
-            }}
-          >
-            Storage Type
-          </label>
+      <form onSubmit={handleSubmit} className="credential-form">
+        <div className="form-group">
+          <label className="form-label">Storage Type</label>
           <select
             value={storageType}
             onChange={(e) => setStorageType(e.target.value as StorageType)}
-            style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+            className="form-select"
           >
             <option value="FileSystem">File System</option>
             <option value="WebDAV">WebDAV</option>
@@ -170,25 +163,17 @@ export default function CredentialForm({ onSubmit }: Props) {
         </div>
 
         {storageType === "FileSystem" && (
-          <div style={{ marginBottom: "20px" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "5px",
-                fontWeight: "bold",
-              }}
-            >
-              File Path
-            </label>
+          <div className="form-group">
+            <label className="form-label">File Path</label>
             <input
               type="text"
               value={fileSystemPath}
               onChange={(e) => setFileSystemPath(e.target.value)}
               placeholder="/path/to/joplin/sync/folder"
-              style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+              className="form-input"
               required
             />
-            <small style={{ color: "#666" }}>
+            <small className="form-hint">
               Enter the absolute path to your Joplin sync folder
             </small>
           </div>
@@ -196,27 +181,17 @@ export default function CredentialForm({ onSubmit }: Props) {
 
         {storageType === "WebDAV" && (
           <>
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                WebDAV URL
-              </label>
+            <div className="form-group">
+              <label className="form-label">WebDAV URL</label>
               <input
                 type="text"
                 value={webdavPath}
                 onChange={(e) => setWebdavPath(e.target.value)}
                 placeholder="http://localhost:6065/"
-                style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+                className="form-input"
                 required
               />
-              <small
-                style={{ color: "#666", display: "block", marginTop: "4px" }}
-              >
+              <small className="form-hint">
                 Enter your WebDAV server URL. Localhost URLs will automatically
                 use CORS proxy.
                 <br />
@@ -224,56 +199,39 @@ export default function CredentialForm({ onSubmit }: Props) {
               </small>
             </div>
 
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                Username
-              </label>
+            <div className="form-group">
+              <label className="form-label">Username</label>
               <input
                 type="text"
                 value={webdavUsername}
                 onChange={(e) => setWebdavUsername(e.target.value)}
                 placeholder="username"
-                style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+                className="form-input"
                 required
               />
             </div>
 
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                Password
-              </label>
+            <div className="form-group">
+              <label className="form-label">Password</label>
               <input
                 type="password"
                 value={webdavPassword}
                 onChange={(e) => setWebdavPassword(e.target.value)}
                 placeholder="password"
-                style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+                className="form-input"
                 required
               />
             </div>
 
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
-              >
+            <div className="form-group">
+              <label className="form-checkbox-group">
                 <input
                   type="checkbox"
                   checked={webdavIgnoreTls}
                   onChange={(e) => setWebdavIgnoreTls(e.target.checked)}
+                  className="form-checkbox"
                 />
-                Ignore TLS Errors
+                <span className="form-checkbox-label">Ignore TLS Errors</span>
               </label>
             </div>
           </>
@@ -281,60 +239,36 @@ export default function CredentialForm({ onSubmit }: Props) {
 
         {storageType === "OneDrive" && (
           <>
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                Client ID
-              </label>
+            <div className="form-group">
+              <label className="form-label">Client ID</label>
               <input
                 type="text"
                 value={oneDriveClientId}
                 onChange={(e) => setOneDriveClientId(e.target.value)}
                 placeholder="OneDrive Client ID"
-                style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+                className="form-input"
               />
             </div>
 
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                Client Secret
-              </label>
+            <div className="form-group">
+              <label className="form-label">Client Secret</label>
               <input
                 type="password"
                 value={oneDriveClientSecret}
                 onChange={(e) => setOneDriveClientSecret(e.target.value)}
                 placeholder="Client Secret"
-                style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+                className="form-input"
               />
             </div>
 
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                Auth Token (if you have one)
-              </label>
+            <div className="form-group">
+              <label className="form-label">Auth Token (if you have one)</label>
               <input
                 type="text"
                 value={oneDriveAuthToken}
                 onChange={(e) => setOneDriveAuthToken(e.target.value)}
                 placeholder="Optional auth token"
-                style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+                className="form-input"
               />
             </div>
           </>
@@ -342,82 +276,50 @@ export default function CredentialForm({ onSubmit }: Props) {
 
         {storageType === "JoplinServer" && (
           <>
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                Server URL
-              </label>
+            <div className="form-group">
+              <label className="form-label">Server URL</label>
               <input
                 type="text"
                 value={joplinServerPath}
                 onChange={(e) => setJoplinServerPath(e.target.value)}
                 placeholder="http://localhost:22300"
-                style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+                className="form-input"
                 required
               />
             </div>
 
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                Username
-              </label>
+            <div className="form-group">
+              <label className="form-label">Username</label>
               <input
                 type="text"
                 value={joplinServerUsername}
                 onChange={(e) => setJoplinServerUsername(e.target.value)}
                 placeholder="username"
-                style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+                className="form-input"
                 required
               />
             </div>
 
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                Password
-              </label>
+            <div className="form-group">
+              <label className="form-label">Password</label>
               <input
                 type="password"
                 value={joplinServerPassword}
                 onChange={(e) => setJoplinServerPassword(e.target.value)}
                 placeholder="password"
-                style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+                className="form-input"
                 required
               />
             </div>
 
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                User Content Path
-              </label>
+            <div className="form-group">
+              <label className="form-label">User Content Path</label>
               <input
                 type="text"
                 value={joplinServerUserContentPath}
                 onChange={(e) => setJoplinServerUserContentPath(e.target.value)}
                 placeholder="/path/to/user/content"
-                style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+                className="form-input"
                 required
               />
             </div>
@@ -426,79 +328,42 @@ export default function CredentialForm({ onSubmit }: Props) {
 
         {storageType === "GoogleDrive" && (
           <>
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                Client ID
-              </label>
+            <div className="form-group">
+              <label className="form-label">Client ID</label>
               <input
                 type="text"
                 value={googleDriveClientId}
                 onChange={(e) => setGoogleDriveClientId(e.target.value)}
                 placeholder="Google Drive Client ID"
-                style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+                className="form-input"
               />
             </div>
 
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                Client Secret
-              </label>
+            <div className="form-group">
+              <label className="form-label">Client Secret</label>
               <input
                 type="password"
                 value={googleDriveClientSecret}
                 onChange={(e) => setGoogleDriveClientSecret(e.target.value)}
                 placeholder="Client Secret"
-                style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+                className="form-input"
               />
             </div>
 
-            <div style={{ marginBottom: "15px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                Auth Token (if you have one)
-              </label>
+            <div className="form-group">
+              <label className="form-label">Auth Token (if you have one)</label>
               <input
                 type="text"
                 value={googleDriveAuthToken}
                 onChange={(e) => setGoogleDriveAuthToken(e.target.value)}
                 placeholder="Optional auth token"
-                style={{ width: "100%", padding: "8px", fontSize: "16px" }}
+                className="form-input"
               />
             </div>
           </>
         )}
 
-        <button
-          type="submit"
-          style={{
-            width: "100%",
-            padding: "12px",
-            fontSize: "16px",
-            fontWeight: "bold",
-            backgroundColor: "#007bff",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-          }}
-        >
+        <button type="submit" className="submit-btn">
           Connect
         </button>
       </form>

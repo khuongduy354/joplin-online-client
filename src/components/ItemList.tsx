@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { Item } from "joplin-sync";
 import { joplinApi } from "../services/joplinApi";
+import "./ItemList.css";
 
 interface Props {
   items: Item[];
@@ -9,18 +10,107 @@ interface Props {
   onRefresh: () => void;
 }
 
+interface TreeNode {
+  item: Item;
+  children: TreeNode[];
+}
+
+const ITEM_TYPES = {
+  NOTE: 1,
+  FOLDER: 2,
+  RESOURCE: 4,
+  TAG: 5,
+  REVISION: 13,
+} as const;
+
 export default function ItemList({ items, loading, error, onRefresh }: Props) {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [itemDetail, setItemDetail] = useState<Item | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<
-    "all" | "notes" | "folders" | "tags" | "resources"
-  >("all");
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    console.log("Items updated", items);
+
+
+  // Filter out revisions and unknown types
+  const validItems = useMemo(() => {
+    const filtered = items.filter((item) => {
+      // Skip null or undefined items
+      if (!item) return false;
+      
+      // Skip items without type_ property (like info.json, config.yml from file listing)
+      if (typeof item.type_ !== 'number') return false;
+      
+      // Filter out revisions (type 13)
+      if (item.type_ === ITEM_TYPES.REVISION) return false;
+      
+      // Only show notes, folders, resources, and tags
+      const validTypes: number[] = [ITEM_TYPES.NOTE, ITEM_TYPES.FOLDER, ITEM_TYPES.RESOURCE, ITEM_TYPES.TAG];
+      return validTypes.includes(item.type_);
+    });
+    
+    console.log(`[ItemList] Filtered ${filtered.length} valid items from ${items.length} total items`);
+    return filtered;
   }, [items]);
+
+  // Build folder tree structure
+  const folderTree = useMemo(() => {
+    const folders = validItems.filter((item) => item.type_ === ITEM_TYPES.FOLDER);
+    const notes = validItems.filter((item) => item.type_ === ITEM_TYPES.NOTE);
+    
+    // Create a map of folder ID to TreeNode
+    const folderMap = new Map<string, TreeNode>();
+    const rootNodes: TreeNode[] = [];
+
+    // Initialize all folders
+    folders.forEach((folder) => {
+      folderMap.set(folder.id, { item: folder, children: [] });
+    });
+
+    // Build tree structure for folders
+    folders.forEach((folder) => {
+      const node = folderMap.get(folder.id)!;
+      if (folder.parent_id && folderMap.has(folder.parent_id)) {
+        folderMap.get(folder.parent_id)!.children.push(node);
+      } else {
+        rootNodes.push(node);
+      }
+    });
+
+    // Add notes to their parent folders
+    notes.forEach((note) => {
+      if (note.parent_id && folderMap.has(note.parent_id)) {
+        folderMap.get(note.parent_id)!.children.push({
+          item: note,
+          children: [],
+        });
+      } else {
+        // Orphaned notes (no parent folder)
+        rootNodes.push({ item: note, children: [] });
+      }
+    });
+
+    // Sort children: folders first, then notes, alphabetically
+    const sortChildren = (node: TreeNode) => {
+      node.children.sort((a, b) => {
+        if (a.item.type_ !== b.item.type_) {
+          return a.item.type_ === ITEM_TYPES.FOLDER ? -1 : 1;
+        }
+        return (a.item.title || "").localeCompare(b.item.title || "");
+      });
+      node.children.forEach(sortChildren);
+    };
+
+    rootNodes.forEach(sortChildren);
+    rootNodes.sort((a, b) => {
+      if (a.item.type_ !== b.item.type_) {
+        return a.item.type_ === ITEM_TYPES.FOLDER ? -1 : 1;
+      }
+      return (a.item.title || "").localeCompare(b.item.title || "");
+    });
+
+    return rootNodes;
+  }, [validItems]);
 
   // Fetch item details when selected
   useEffect(() => {
@@ -33,10 +123,7 @@ export default function ItemList({ items, loading, error, onRefresh }: Props) {
       setLoadingDetail(true);
       setDetailError(null);
       try {
-        // Extract ID from path (remove .md extension)
-        const itemId = selectedItem.path?.replace(/\.md$/, "") || "";
-        console.log("Fetching item detail for:", itemId);
-        const detail = await joplinApi.getItem(itemId);
+        const detail = await joplinApi.getItem(selectedItem.id);
         setItemDetail(detail);
       } catch (err) {
         const errorMsg =
@@ -51,24 +138,42 @@ export default function ItemList({ items, loading, error, onRefresh }: Props) {
     fetchItemDetail();
   }, [selectedItem]);
 
-  const filteredItems = items.filter((item) => {
-    if (filter === "all") return true;
-    if (filter === "notes") return item.type_ === 1;
-    if (filter === "folders") return item.type_ === 2;
-    if (filter === "tags") return item.type_ === 5;
-    if (filter === "resources") return item.type_ === 4;
-    return true;
-  });
+  const toggleFolder = (folderId: string) => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
+  };
+
+  const getItemIcon = (type: number): string => {
+    switch (type) {
+      case ITEM_TYPES.NOTE:
+        return "📄";
+      case ITEM_TYPES.FOLDER:
+        return "📁";
+      case ITEM_TYPES.TAG:
+        return "🏷️";
+      case ITEM_TYPES.RESOURCE:
+        return "📎";
+      default:
+        return "📋";
+    }
+  };
 
   const getItemTypeLabel = (type: number): string => {
     switch (type) {
-      case 1:
+      case ITEM_TYPES.NOTE:
         return "Note";
-      case 2:
+      case ITEM_TYPES.FOLDER:
         return "Folder";
-      case 5:
+      case ITEM_TYPES.TAG:
         return "Tag";
-      case 4:
+      case ITEM_TYPES.RESOURCE:
         return "Resource";
       default:
         return `Type ${type}`;
@@ -80,197 +185,191 @@ export default function ItemList({ items, loading, error, onRefresh }: Props) {
     return new Date(timestamp).toLocaleString();
   };
 
+  const renderTreeNode = (node: TreeNode, depth: number = 0) => {
+    const isFolder = node.item.type_ === ITEM_TYPES.FOLDER;
+    const isExpanded = expandedFolders.has(node.item.id);
+    const hasChildren = node.children.length > 0;
+    const isSelected = selectedItem?.id === node.item.id;
+
+    return (
+      <div key={node.item.id} className="tree-node">
+        <div
+          className={`tree-item ${isSelected ? "selected" : ""} ${isFolder ? "folder" : "note"}`}
+          style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
+          onClick={() => setSelectedItem(node.item)}
+        >
+          {isFolder && hasChildren && (
+            <button
+              className="expand-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFolder(node.item.id);
+              }}
+            >
+              <span className={`arrow ${isExpanded ? "expanded" : ""}`}>▶</span>
+            </button>
+          )}
+          {isFolder && !hasChildren && <span className="expand-placeholder" />}
+          <span className="item-icon">{getItemIcon(node.item.type_)}</span>
+          <span className="item-title">{node.item.title || "(Untitled)"}</span>
+          {isFolder && hasChildren && (
+            <span className="item-count">({node.children.length})</span>
+          )}
+        </div>
+        {isFolder && isExpanded && hasChildren && (
+          <div className="tree-children">
+            {node.children.map((child) => renderTreeNode(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
-      <div style={{ textAlign: "center", padding: "40px" }}>
-        <p>Loading items...</p>
+      <div className="item-list-container">
+        <div className="loading-state">
+          <div className="spinner" />
+          <p>Loading items...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ textAlign: "center", padding: "40px", color: "red" }}>
-        <p>Error: {error}</p>
-        <button
-          onClick={onRefresh}
-          style={{ marginTop: "10px", padding: "8px 16px" }}
-        >
-          Retry
-        </button>
+      <div className="item-list-container">
+        <div className="error-state">
+          <div className="error-icon">⚠️</div>
+          <p className="error-message">Error: {error}</p>
+          <button onClick={onRefresh} className="retry-btn">
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
 
+  const stats = {
+    total: validItems.length,
+    notes: validItems.filter((i) => i.type_ === ITEM_TYPES.NOTE).length,
+    folders: validItems.filter((i) => i.type_ === ITEM_TYPES.FOLDER).length,
+    resources: validItems.filter((i) => i.type_ === ITEM_TYPES.RESOURCE).length,
+    tags: validItems.filter((i) => i.type_ === ITEM_TYPES.TAG).length,
+  };
+
   return (
-    <div style={{ display: "flex", gap: "20px", padding: "20px" }}>
-      <div
-        style={{
-          flex: "0 0 300px",
-          borderRight: "1px solid #ddd",
-          paddingRight: "20px",
-        }}
-      >
-        <div
-          style={{
-            marginBottom: "20px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <h2>Items ({filteredItems.length})</h2>
-          <button
-            onClick={onRefresh}
-            style={{ padding: "6px 12px", fontSize: "14px" }}
-          >
-            Refresh
+    <div className="item-list-container">
+      <div className="sidebar">
+        <div className="sidebar-header">
+          <h2>Library</h2>
+          <button onClick={onRefresh} className="refresh-btn" title="Refresh">
+            ↻
           </button>
         </div>
 
-        <div style={{ marginBottom: "15px" }}>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "5px",
-              fontWeight: "bold",
-            }}
-          >
-            Filter:
-          </label>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
-            style={{ width: "100%", padding: "6px", fontSize: "14px" }}
-          >
-            <option value="all">All ({items.length})</option>
-            <option value="notes">
-              Notes ({items.filter((i) => i.type_ === 1).length})
-            </option>
-            <option value="folders">
-              Folders ({items.filter((i) => i.type_ === 2).length})
-            </option>
-            <option value="tags">
-              Tags ({items.filter((i) => i.type_ === 5).length})
-            </option>
-            <option value="resources">
-              Resources ({items.filter((i) => i.type_ === 4).length})
-            </option>
-          </select>
+        <div className="stats-grid">
+          <div className="stat-card">
+            <span className="stat-value">{stats.folders}</span>
+            <span className="stat-label">Folders</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-value">{stats.notes}</span>
+            <span className="stat-label">Notes</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-value">{stats.resources}</span>
+            <span className="stat-label">Resources</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-value">{stats.tags}</span>
+            <span className="stat-label">Tags</span>
+          </div>
         </div>
 
-        <div style={{ maxHeight: "calc(100vh - 250px)", overflowY: "auto" }}>
-          {filteredItems.length === 0 ? (
-            <p style={{ color: "#666" }}>No items found</p>
+        <div className="tree-container">
+          {folderTree.length === 0 ? (
+            <div className="empty-state">
+              <p>No items found</p>
+            </div>
           ) : (
-            filteredItems.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => setSelectedItem(item)}
-                style={{
-                  padding: "10px",
-                  marginBottom: "8px",
-                  border: "1px solid #ddd",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  backgroundColor:
-                    selectedItem?.id === item.id ? "#e3f2fd" : "white",
-                }}
-              >
-                <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
-                  {item.title || "(Untitled)"}
-                </div>
-                <div style={{ fontSize: "12px", color: "#666" }}>
-                  {getItemTypeLabel(item.type_)}
-                </div>
-              </div>
-            ))
+            folderTree.map((node) => renderTreeNode(node))
           )}
         </div>
       </div>
 
-      <div style={{ flex: 1 }}>
+      <div className="detail-panel">
         {!selectedItem ? (
-          <div style={{ textAlign: "center", padding: "60px", color: "#666" }}>
+          <div className="empty-detail">
+            <div className="empty-icon">📋</div>
             <p>Select an item to view details</p>
           </div>
         ) : loadingDetail ? (
-          <div style={{ textAlign: "center", padding: "60px" }}>
-            <p>Loading item details...</p>
+          <div className="loading-detail">
+            <div className="spinner" />
+            <p>Loading details...</p>
           </div>
         ) : detailError ? (
-          <div style={{ textAlign: "center", padding: "60px", color: "red" }}>
+          <div className="error-detail">
+            <div className="error-icon">⚠️</div>
             <p>Error loading details: {detailError}</p>
           </div>
         ) : itemDetail ? (
-          <div>
-            <h2>{itemDetail.title || "(Untitled)"}</h2>
-            <div
-              style={{
-                marginBottom: "20px",
-                padding: "10px",
-                backgroundColor: "#f5f5f5",
-                borderRadius: "4px",
-              }}
-            >
-              <div style={{ marginBottom: "8px" }}>
-                <strong>Type:</strong> {getItemTypeLabel(itemDetail.type_)}
-              </div>
-              <div style={{ marginBottom: "8px" }}>
-                <strong>ID:</strong> <code>{itemDetail.id}</code>
+          <div className="detail-content">
+            <div className="detail-header">
+              <h2 className="detail-title">
+                <span className="detail-icon">{getItemIcon(itemDetail.type_)}</span>
+                {itemDetail.title || "(Untitled)"}
+              </h2>
+              <span className="detail-type">{getItemTypeLabel(itemDetail.type_)}</span>
+            </div>
+
+            <div className="detail-metadata">
+              <div className="metadata-row">
+                <span className="metadata-label">ID</span>
+                <code className="metadata-value">{itemDetail.id}</code>
               </div>
               {itemDetail.parent_id && (
-                <div style={{ marginBottom: "8px" }}>
-                  <strong>Parent ID:</strong>{" "}
-                  <code>{itemDetail.parent_id}</code>
+                <div className="metadata-row">
+                  <span className="metadata-label">Parent ID</span>
+                  <code className="metadata-value">{itemDetail.parent_id}</code>
                 </div>
               )}
-              <div style={{ marginBottom: "8px" }}>
-                <strong>Created:</strong> {formatDate(itemDetail.created_time)}
+              <div className="metadata-row">
+                <span className="metadata-label">Created</span>
+                <span className="metadata-value">{formatDate(itemDetail.created_time)}</span>
               </div>
-              <div style={{ marginBottom: "8px" }}>
-                <strong>Updated:</strong> {formatDate(itemDetail.updated_time)}
+              <div className="metadata-row">
+                <span className="metadata-label">Updated</span>
+                <span className="metadata-value">{formatDate(itemDetail.updated_time)}</span>
               </div>
             </div>
 
             {itemDetail.body && (
-              <div>
-                <h3>Content:</h3>
-                <div
-                  style={{
-                    padding: "15px",
-                    backgroundColor: "#f9f9f9",
-                    borderRadius: "4px",
-                    border: "1px solid #ddd",
-                    whiteSpace: "pre-wrap",
-                    fontFamily: "monospace",
-                    maxHeight: "400px",
-                    overflowY: "auto",
-                  }}
-                >
+              <div className="detail-body">
+                <h3 className="section-title">Content</h3>
+                <div className="content-preview">
                   {itemDetail.body}
                 </div>
               </div>
             )}
 
-            {itemDetail.type_ === 4 && (
-              <div style={{ marginTop: "15px" }}>
-                <h3>Resource Info:</h3>
-                <div
-                  style={{
-                    padding: "10px",
-                    backgroundColor: "#f5f5f5",
-                    borderRadius: "4px",
-                  }}
-                >
+            {itemDetail.type_ === ITEM_TYPES.RESOURCE && (
+              <div className="resource-info">
+                <h3 className="section-title">Resource Information</h3>
+                <div className="detail-metadata">
                   {itemDetail.size && (
-                    <div>
-                      <strong>Size:</strong> {itemDetail.size} bytes
+                    <div className="metadata-row">
+                      <span className="metadata-label">Size</span>
+                      <span className="metadata-value">
+                        {(itemDetail.size / 1024).toFixed(2)} KB
+                      </span>
                     </div>
                   )}
-                  {itemDetail.mime && (
-                    <div>
-                      <strong>MIME Type:</strong> {itemDetail.mime}
+                  {(itemDetail as any).mime && (
+                    <div className="metadata-row">
+                      <span className="metadata-label">MIME Type</span>
+                      <span className="metadata-value">{(itemDetail as any).mime}</span>
                     </div>
                   )}
                 </div>
@@ -278,7 +377,7 @@ export default function ItemList({ items, loading, error, onRefresh }: Props) {
             )}
           </div>
         ) : (
-          <div style={{ textAlign: "center", padding: "60px", color: "#666" }}>
+          <div className="empty-detail">
             <p>No details available</p>
           </div>
         )}
