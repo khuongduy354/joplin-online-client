@@ -7,6 +7,15 @@ const { StorageAPI } = JoplinSync;
 export class JoplinApiService {
   private storage: typeof StorageAPI.prototype | null = null;
   private initialized = false;
+  private oauthFlowHandler: ((authUrl: string) => Promise<string>) | null = null;
+
+  /**
+   * Set a custom OAuth flow handler for services like OneDrive and Google Drive
+   * @param handler Function that takes an auth URL and returns a Promise with the auth code
+   */
+  setOAuthFlowHandler(handler: (authUrl: string) => Promise<string>): void {
+    this.oauthFlowHandler = handler;
+  }
 
   async connect(credentials: Credentials): Promise<void> {
     try {
@@ -35,8 +44,11 @@ export class JoplinApiService {
             clientSecret: credentials.onedrive?.clientSecret,
             authToken: credentials.onedrive?.authToken,
             isPublic: credentials.onedrive?.isPublic ?? true,
+            oauthFlowHandler: this.oauthFlowHandler ?? undefined,
+            redirectUri: credentials.onedrive?.redirectUri,
           },
         });
+
       } else if (type === "JoplinServer") {
         this.storage = new StorageAPI("JoplinServer", {
           joplinServerOptions: {
@@ -68,6 +80,16 @@ export class JoplinApiService {
       throw new Error(
         `Failed to connect to ${credentials.type}: ${error instanceof Error ? error.message : String(error)}`
       );
+    }
+  }
+
+  /**
+   * Listen for auth token refresh events (OneDrive/GoogleDrive)
+   * @param callback Function to call when auth is refreshed
+   */
+  onAuthRefresh(callback: (authToken: string) => void): void {
+    if (this.storage) {
+      this.storage.onAuthRefresh(callback);
     }
   }
 

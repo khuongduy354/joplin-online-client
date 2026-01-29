@@ -1,0 +1,226 @@
+.oauth-handler-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.oauth-handler-modal {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  max-width: 600px;
+  width: 100%;
+  padding: 40px;
+  color: #f1f5f9;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.oauth-handler-modal h2 {
+  margin: 0 0 24px 0;
+  color: #f1f5f9;
+  font-size: 28px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.oauth-description {
+  color: #cbd5e1;
+  line-height: 1.6;
+  margin-bottom: 24px;
+  font-size: 16px;
+}
+
+.oauth-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.oauth-btn {
+  padding: 12px 28px;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.oauth-btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.oauth-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.oauth-btn-secondary {
+  background: rgba(148, 163, 184, 0.1);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.oauth-btn-secondary:hover {
+  background: rgba(148, 163, 184, 0.2);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.oauth-status {
+  text-align: center;
+  padding: 32px 0;
+}
+
+.oauth-spinner {
+  margin: 0 auto 20px;
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(59, 130, 246, 0.2);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.oauth-status p {
+  color: #cbd5e1;
+  margin: 8px 0;
+}
+
+.oauth-hint {
+  color: #94a3b8;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.oauth-link-btn {
+  background: none;
+  border: none;
+  color: #60a5fa;
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: underline;
+  margin-top: 16px;
+  padding: 0;
+  font-family: inherit;
+  transition: color 0.2s ease;
+}
+
+.oauth-link-btn:hover {
+  color: #93c5fd;
+}
+
+.oauth-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.oauth-error p {
+  color: #fecaca;
+  margin: 0 0 16px 0;
+}
+
+.oauth-manual-mode {
+  color: #cbd5e1;
+}
+
+.oauth-instructions {
+  background: rgba(148, 163, 184, 0.05);
+  border-left: 3px solid #3b82f6;
+  padding: 20px 20px 20px 40px;
+  margin: 20px 0;
+  line-height: 1.8;
+  color: #cbd5e1;
+}
+
+.oauth-instructions li {
+  margin-bottom: 12px;
+}
+
+.oauth-link {
+  color: #60a5fa;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.oauth-link:hover {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+.oauth-manual-form {
+  margin-top: 24px;
+}
+
+.oauth-label {
+  display: block;
+  color: #f1f5f9;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.oauth-textarea {
+  width: 100%;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  color: #f1f5f9;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  resize: vertical;
+  transition: border-color 0.2s ease;
+}
+
+.oauth-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.oauth-textarea::placeholder {
+  color: #64748b;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .oauth-handler-modal {
+    padding: 24px;
+  }
+
+  .oauth-handler-modal h2 {
+    font-size: 24px;
+  }
+
+  .oauth-actions {
+    flex-direction: column;
+  }
+
+  .oauth-btn {
+    width: 100%;
+  }
+}

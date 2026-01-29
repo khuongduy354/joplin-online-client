@@ -24,7 +24,9 @@ export interface Credentials {
     clientSecret?: string;
     authToken?: string;
     isPublic?: boolean;
+    redirectUri?: string;
   };
+
   joplinserver?: {
     username: string;
     password: string;
@@ -82,7 +84,6 @@ export default function CredentialForm({ onSubmit }: Props) {
   };
 
   const [oneDriveClientId, setOneDriveClientId] = useState("");
-  const [oneDriveClientSecret, setOneDriveClientSecret] = useState("");
   const [oneDriveAuthToken, setOneDriveAuthToken] = useState("");
 
   const [joplinServerUsername, setJoplinServerUsername] = useState("");
@@ -113,11 +114,15 @@ export default function CredentialForm({ onSubmit }: Props) {
         ignoreTlsErrors: webdavIgnoreTls,
       };
     } else if (storageType === "OneDrive") {
+      // Use just the origin as redirect URI (not including /oauth-callback.html)
+      // This should match what's registered in Azure Portal
+      const redirectUri = window.location.origin;
+      
       credentials.onedrive = {
         clientId: oneDriveClientId,
-        clientSecret: oneDriveClientSecret,
-        authToken: oneDriveAuthToken,
+        authToken: oneDriveAuthToken || undefined,
         isPublic: true,
+        redirectUri,
       };
     } else if (storageType === "JoplinServer") {
       credentials.joplinserver = {
@@ -152,7 +157,7 @@ export default function CredentialForm({ onSubmit }: Props) {
           >
             <option value="FileSystem">File System</option>
             <option value="WebDAV">WebDAV</option>
-            <option value="OneDrive">OneDrive (OAuth - Not working yet)</option>
+            <option value="OneDrive">OneDrive</option>
             <option value="JoplinServer">
               Joplin Server (Not working yet)
             </option>
@@ -239,37 +244,61 @@ export default function CredentialForm({ onSubmit }: Props) {
 
         {storageType === "OneDrive" && (
           <>
+            <div className="form-info-box">
+              <h4>🔐 OneDrive Authentication</h4>
+              <p>
+                To connect to OneDrive, you need to register an app in the Azure Portal.
+                See the <strong>OneDrive Setup Guide</strong> in the documentation for detailed instructions.
+              </p>
+            </div>
+
             <div className="form-group">
-              <label className="form-label">Client ID</label>
+              <label className="form-label">
+                Client ID <span className="required">*</span>
+              </label>
               <input
                 type="text"
                 value={oneDriveClientId}
                 onChange={(e) => setOneDriveClientId(e.target.value)}
-                placeholder="OneDrive Client ID"
+                placeholder="e.g., 12345678-1234-1234-1234-123456789abc"
                 className="form-input"
+                required
               />
+              <small className="form-hint">
+                Your Azure App Registration Client ID (found in Azure Portal)
+              </small>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Client Secret</label>
-              <input
-                type="password"
-                value={oneDriveClientSecret}
-                onChange={(e) => setOneDriveClientSecret(e.target.value)}
-                placeholder="Client Secret"
-                className="form-input"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Auth Token (if you have one)</label>
-              <input
-                type="text"
+              <label className="form-label">Auth Token (Optional)</label>
+              <textarea
                 value={oneDriveAuthToken}
                 onChange={(e) => setOneDriveAuthToken(e.target.value)}
-                placeholder="Optional auth token"
-                className="form-input"
+                placeholder='{"access_token":"...","refresh_token":"...","token_type":"Bearer",...}'
+                className="form-input form-textarea"
+                rows={3}
               />
+              <small className="form-hint">
+                If you have a saved token from a previous session, paste it here.
+                Otherwise, leave empty and the OAuth flow will start automatically.
+              </small>
+            </div>
+
+            <div className="form-group">
+              <label className="form-checkbox-group">
+                <input
+                  type="checkbox"
+                  checked={true}
+                  disabled
+                  className="form-checkbox"
+                />
+                <span className="form-checkbox-label">
+                  Public Client (SPA mode)
+                </span>
+              </label>
+              <small className="form-hint">
+                Web apps use public client mode for security (no client secret needed)
+              </small>
             </div>
           </>
         )}

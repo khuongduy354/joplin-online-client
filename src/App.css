@@ -31,6 +31,24 @@
   letter-spacing: -0.02em;
 }
 
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.profile-badge {
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  color: white;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: var(--shadow-sm);
+}
+
 .disconnect-btn {
   padding: var(--spacing-sm) var(--spacing-lg);
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
