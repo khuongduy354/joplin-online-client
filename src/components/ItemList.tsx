@@ -8,6 +8,7 @@ interface Props {
   loading: boolean;
   error: string | null;
   onRefresh: () => void;
+  totalCount?: number;
 }
 
 interface TreeNode {
@@ -23,14 +24,12 @@ const ITEM_TYPES = {
   REVISION: 13,
 } as const;
 
-export default function ItemList({ items, loading, error, onRefresh }: Props) {
+export default function ItemList({ items, loading, error, onRefresh, totalCount }: Props) {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [itemDetail, setItemDetail] = useState<Item | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-
-
 
   // Filter out revisions and unknown types
   const validItems = useMemo(() => {
@@ -262,7 +261,14 @@ export default function ItemList({ items, loading, error, onRefresh }: Props) {
     <div className="item-list-container">
       <div className="sidebar">
         <div className="sidebar-header">
-          <h2>Library</h2>
+          <div>
+            <h2>Library</h2>
+            {totalCount !== undefined && (
+              <div className="item-count-badge">
+                Showing {validItems.length} of {totalCount}
+              </div>
+            )}
+          </div>
           <button onClick={onRefresh} className="refresh-btn" title="Refresh">
             ↻
           </button>

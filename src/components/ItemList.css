@@ -33,6 +33,17 @@
   letter-spacing: -0.01em;
 }
 
+.item-count-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  margin-top: var(--spacing-xs);
+  background: var(--bg-tertiary);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+}
+
 .refresh-btn {
   width: 36px;
   height: 36px;

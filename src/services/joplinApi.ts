@@ -2,7 +2,13 @@ import * as JoplinSync from "joplin-sync";
 import type { Credentials } from "../components/CredentialForm";
 import type { Item } from "joplin-sync";
 
-const { StorageAPI } = JoplinSync;
+const { StorageAPI, Logger, LogLevel } = JoplinSync as any;
+
+// Disable verbose logging, only allow errors
+if (Logger && LogLevel) {
+  console.log("Setting JoplinSync log level to ERROR");
+  Logger.setLevel(LogLevel.Error);
+}
 
 export class JoplinApiService {
   private storage: typeof StorageAPI.prototype | null = null;
@@ -46,6 +52,7 @@ export class JoplinApiService {
             isPublic: credentials.onedrive?.isPublic ?? true,
             oauthFlowHandler: this.oauthFlowHandler ?? undefined,
             redirectUri: credentials.onedrive?.redirectUri,
+            basePath: credentials.onedrive?.basePath,
           },
         });
 
@@ -93,15 +100,45 @@ export class JoplinApiService {
     }
   }
 
-  async getItems(): Promise<Item[]> {
+  /**
+   * List all items (metadata only, no content)
+   * This is fast and efficient for checking what exists
+   */
+  async listItems(): Promise<any[]> {
     try {
       if (!this.storage || !this.initialized) {
         throw new Error("Storage not initialized. Call connect() first.");
       }
 
-      console.log("[JoplinApi.getItems] Fetching items");
+      console.log("[JoplinApi.listItems] Fetching item list (metadata)");
+      const items = await this.storage.getItems({
+        unserializeAll: false,
+      });
+      
+      return items;
+    } catch (error) {
+      console.error("[JoplinApi.listItems] Error:", error);
+      throw new Error(
+        `Failed to list items: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Fetch full item content for specific IDs or all items
+   * @param ids Optional list of IDs to fetch. If not provided, fetches ALL items (careful with large libraries!)
+   */
+  async getItems(ids?: string[]): Promise<Item[]> {
+    try {
+      if (!this.storage || !this.initialized) {
+        throw new Error("Storage not initialized. Call connect() first.");
+      }
+
+      console.log(`[JoplinApi.getItems] Fetching items (ids: ${ids?.length || 'ALL'})`);
+      
       const items = await this.storage.getItems({
         unserializeAll: true,
+        ids: ids,
       });
       
       // Filter out null items (items that failed to unserialize)

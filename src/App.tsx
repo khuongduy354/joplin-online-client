@@ -15,6 +15,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<Item[]>([]);
+  const [allItemIds, setAllItemIds] = useState<string[]>([]);
   
   // OAuth flow state
   const [oauthAuthUrl, setOauthAuthUrl] = useState<string | null>(null);
@@ -168,10 +169,31 @@ function App() {
         setLoading(true);
         try {
           await joplinApi.connect(activeProfile.credentials);
-          const fetchedItems = await joplinApi.getItems();
-          setItems(fetchedItems);
-          setConnected(true);
+          setConnected(true); // Redirect immediately on auto-reconnect too
           console.log("Auto-reconnected successfully");
+          
+          // Optimized loading
+          const allMeta = await joplinApi.listItems();
+          
+          // Debug first item if needed
+          if (allMeta.length > 0 && !allMeta[0].name) {
+             // Fallback for OneDrive where it might be .filename or similar?
+             console.log('Sample item structure (auto-reconnect):', allMeta[0]);
+          }
+
+          const noteIds = allMeta
+            // @ts-ignore
+            .filter(item => item.path && item.path.endsWith('.md'))
+            // @ts-ignore
+            .map(item => item.path.replace('.md', ''));
+          
+          setAllItemIds(noteIds);
+            
+          if (noteIds.length > 0) {
+            const itemsToFetch = noteIds.slice(0, 50);
+            const fetchedItems = await joplinApi.getItems(itemsToFetch);
+            setItems(fetchedItems);
+          }
         } catch (err) {
           console.error("Auto-reconnect failed:", err);
           // Don't show error for auto-reconnect, just clear the profile
@@ -267,8 +289,8 @@ function App() {
       }
       
       await joplinApi.connect(credentials);
-      const fetchedItems = await joplinApi.getItems();
-      setItems(fetchedItems);
+      
+      // 1. Redirect immediately!
       setConnected(true);
       
       // Save profile to localStorage
@@ -279,8 +301,35 @@ function App() {
       
       // Clear pending OAuth if it exists
       sessionStorage.removeItem('pending_oauth_credentials');
-      
       console.log("Connected successfully. Profile saved:", profile.name);
+
+      // 2. Fetch data in quickly
+      console.log('Fetching item list metadata...');
+      const allMeta = await joplinApi.listItems();
+      
+      if (allMeta.length > 0) {
+        console.log('Sample item structure:', allMeta[0]);
+      }
+
+      // Filter for .md files (notes/folders/tags)
+      const noteIds = allMeta
+        // @ts-ignore
+        .filter(item => (item.path && item.path.endsWith('.md')))
+        // @ts-ignore
+        .map(item => item.path.replace('.md', ''));
+      
+      setAllItemIds(noteIds);
+
+      console.log(`Found ${noteIds.length} valid .md items (from ${allMeta.length} total)`);
+      
+      if (noteIds.length > 0) {
+        // 3. Fetch content for first 50 items only
+        const itemsToFetch = noteIds.slice(0, 50);
+        const fetchedItems = await joplinApi.getItems(itemsToFetch);
+        setItems(fetchedItems);
+      } else {
+        console.warn("No .md files found! Check sample item above to verify property names.");
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to connect";
@@ -347,6 +396,7 @@ function App() {
             loading={loading}
             error={error}
             onRefresh={handleRefresh}
+            totalCount={allItemIds.length}
           />
         )}
       </main>

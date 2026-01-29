@@ -25,6 +25,7 @@ export interface Credentials {
     authToken?: string;
     isPublic?: boolean;
     redirectUri?: string;
+    basePath?: string; // Custom sync folder path
   };
 
   joplinserver?: {
@@ -85,6 +86,7 @@ export default function CredentialForm({ onSubmit }: Props) {
 
   const [oneDriveClientId, setOneDriveClientId] = useState("");
   const [oneDriveAuthToken, setOneDriveAuthToken] = useState("");
+  const [oneDriveSyncFolder, setOneDriveSyncFolder] = useState("Joplin"); // Default to Joplin app folder
 
   const [joplinServerUsername, setJoplinServerUsername] = useState("");
   const [joplinServerPassword, setJoplinServerPassword] = useState("");
@@ -123,6 +125,10 @@ export default function CredentialForm({ onSubmit }: Props) {
         authToken: oneDriveAuthToken || undefined,
         isPublic: true,
         redirectUri,
+        // Store the folder name - will be used to construct the full path
+        // Format: /drives/{driveId}/root:/Apps/{syncFolder}
+        // The syncFolder is stored here and will be used after we get driveId
+        basePath: oneDriveSyncFolder ? `Apps/${oneDriveSyncFolder}` : undefined,
       };
     } else if (storageType === "JoplinServer") {
       credentials.joplinserver = {
@@ -281,6 +287,21 @@ export default function CredentialForm({ onSubmit }: Props) {
               <small className="form-hint">
                 If you have a saved token from a previous session, paste it here.
                 Otherwise, leave empty and the OAuth flow will start automatically.
+              </small>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Sync Folder</label>
+              <input
+                type="text"
+                value={oneDriveSyncFolder}
+                onChange={(e) => setOneDriveSyncFolder(e.target.value)}
+                placeholder="Joplin"
+                className="form-input"
+              />
+              <small className="form-hint">
+                The folder in your OneDrive where notes are stored.
+                Default is "Joplin" (same as desktop app). Use "Apps/Joplin" if needed.
               </small>
             </div>
 
